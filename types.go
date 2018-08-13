@@ -1,11 +1,17 @@
 package run4labelled
 
 import (
+	"bytes"
 	"github.com/pkg/errors"
 	"os"
 	p "path"
 	"path/filepath"
 	"strings"
+	"text/template"
+)
+
+var (
+	tmpl template.Template
 )
 
 type (
@@ -41,7 +47,13 @@ func (c *Configuration) Walk(baseDir string) error {
 	if s, err := os.Stat(baseDir); os.IsNotExist(err) || !s.IsDir() {
 		return errors.New("base directory not fine")
 	}
-	err := filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
+
+	tmpl, err := template.New("").Parse(c.Run)
+	if err != nil {
+		return err
+	}
+
+	err = filepath.Walk(baseDir, func(path string, info os.FileInfo, err error) error {
 		if info.IsDir() {
 			for _, val := range c.Excludes {
 				if strings.HasSuffix(path, val) {
@@ -50,9 +62,14 @@ func (c *Configuration) Walk(baseDir string) error {
 			}
 			if _, err := os.Stat(p.Join(path, c.Label)); err == nil {
 				if nil != c.sendChannel {
+					var tpl bytes.Buffer
+					err := tmpl.Execute(&tpl, path)
+					if err != nil {
+						return err
+					}
 					c.sendChannel <- Execute{
 						Directory: path,
-						Command:   c.Run,
+						Command:   tpl.String(),
 					}
 				}
 			}

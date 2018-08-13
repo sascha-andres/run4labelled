@@ -1,0 +1,6 @@
+---
+
+label: main.go
+excludes:
+    - .git
+run: /bin/echo hello world
